@@ -1,0 +1,21 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Test Task",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/goods": {
+            "get": {
+                "summary": "Goods: get all",
+                "description": "Get all goods",
+                "operationId": "getGoods",
+                "responses": {
+                    "200": {
+                        "description": "Array of Good's Models"
+                    }
+                }
+            }
+        }
+    }
+}
