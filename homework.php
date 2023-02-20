@@ -1,18 +1,18 @@
 <?php
+
 /**
- * Задача стояла создать простой поиск даты в строке, за основу взят именно USA формат, он имеет приоритет
- * Для её реализации были выбраны 3 сайта со стандартами дат, которые могут находиться в строке и выписаны в $variants
-    https://docs.oracle.com/cd/E41183_01/DR/Date_Format_Types.html
-    https://www.ibm.com/docs/en/cmofz/10.1.0?topic=SSQHWE_10.1.0/com.ibm.ondemand.mp.doc/arsa0257.htm
-    https://www.wikihow.com/Write-Dates#:~:text=Place%20the%20year%20before%20the,out%20as%202022%20October%209.
- * На задачу отводилось ~30 минут, после 3-х часов решения задачи я остановился, код можно ещё расширять:
-    Не предусмотрено слитное написание дат: Feb172009
-    Значения, которые можно расценить двусмысленно, а именно "22:22:22 2018-02-21", где 12:01:01 - это дата, детали:
-        Чтобы обойти эту особенность можно расширить код, который будет вырезать или игнорировать время в формате: H:i:s
-        Так же можно возвращать массив найденных дат, для этого надо заменить preg_match на preg_match_all
-        И, при нахождении нескольких значених похожих на даты - отсеивать неподходящие
- * Регулярки пришлось выбрать, так как встроенные функции PHP очень криво разные форматы воспринимали и 50% не работало
- *
+ * The task was to create a simple search for a date in a string, the USA format was taken as the basis
+ * To solve the task, 3 sites were selected with date standards that can be in a string. I wrote them out in $variants
+https://docs.oracle.com/cd/E41183_01/DR/Date_Format_Types.html
+https://www.ibm.com/docs/en/cmofz/10.1.0?topic=SSQHWE_10.1.0/com.ibm.ondemand.mp.doc/arsa0257.htm
+https://www.wikihow.com/Write-Dates#:~:text=Place%20the%20year%20before%20the,out%20as%202022%20October%209.
+ * It took ~30 min to solve the problem, after 3 hours working I stopped, the code can be also expanded:
+- Merged date format: Feb172009
+- Values that are similar to both time and date, example: "22:22:22 2018-02-21", details:
+To fix it I could ignore format: H:i:s
+I can also return an array of found dates, for this you need to replace preg_match with preg_match_all
+And, when finding several values - use checkdate to all of them
+ * I had to use RegEx, because PHP functions don't work correctly with some formats.
  */
 
 // https://docs.oracle.com/cd/E41183_01/DR/Date_Format_Types.html
@@ -78,7 +78,7 @@ $variants = [
     'July 25 2010' => '2010-07-25',
 
     //  'Feb172009' => '2009-02-17',
-    //	'12:01:01 2018-02-21' => '2018-02-21', - Need to optimaze code. I can use preg_match_all to find all dates except preg_match
+    //  '12:01:01 2018-02-21' => '2018-02-21',
 ];
 
 interface IDateParser
@@ -93,8 +93,10 @@ class DateParser implements IDateParser
     public readonly string $dateFormat;
 
     private array $availableMonthList = [
-        'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
-        'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december',
+        'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+        'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
     ];
     private array $availableEndOfDay = ['st', 'nd', 'rd', 'th'];
 
@@ -188,10 +190,14 @@ class DateParser implements IDateParser
 
     private function tryToGetDateWithNumbersAndMonthTogether(string $inputDate): DateTime|null
     {
-        if (preg_match(
-            '#(\d+[^\da-z]*)?(\d+[^\da-z]*)?(' . implode('|', $this->availableMonthList) . ')([^\da-z]*\d+)?([^\da-z]*\d+)?#iu',
-            $inputDate,
-            $matches)
+        if (
+            preg_match(
+                '#(\d+[^\da-z]*)?(\d+[^\da-z]*)?('
+                . implode('|', $this->availableMonthList) .
+                ')([^\da-z]*\d+)?([^\da-z]*\d+)?#iu',
+                $inputDate,
+                $matches
+            )
         ) {
             $matches = $this->cleanMatchesWithNumbersAndMonthTogether($matches);
             $date = $this->convertArrayOfDatePartsToDateTime($matches);
@@ -259,7 +265,13 @@ class DateParser implements IDateParser
             $date['year'] = $matches[1];
         }
 
-        if (preg_match('#([^\d]|^)([0-3]?\d)(' . implode('|', $this->availableEndOfDay) . ')#i', $inputDate, $matches)) {
+        if (
+            preg_match(
+                '#([^\d]|^)([0-3]?\d)(' . implode('|', $this->availableEndOfDay) . ')#i',
+                $inputDate,
+                $matches
+            )
+        ) {
             $date['day'] = $matches[2];
         } elseif (preg_match('#(' . implode('|', array_keys($this->availableDayList)) . ')#i', $inputDate, $matches)) {
             $date['day'] = $this->availableDayList[$matches[1]];
@@ -292,6 +304,7 @@ foreach ($variants as $k => $v) {
     $expectedRusult = ($v ? date_format(date_create($v), $dateParser->dateFormat) : null);
 
     if ($expectedRusult !== $result) {
-        echo $result . ' !== ' . $expectedRusult . '(Details: ' . $inputDate . '|' . $k . '|' . $v . ')' . "Parser error\r\n";
+        echo $result . ' !== ' . $expectedRusult ,
+            '(Details: ' . $inputDate . '|' . $k . '|' . $v . ')' . "Parser error\r\n";
     }
 }
